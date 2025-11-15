@@ -1,0 +1,69 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# --- 물리 상수 ---
+G = 6.6743e-11        # 중력상수 [m^3 / kg / s^2]
+c = 3.0e5            # 광속 [km/s]
+H0 = 70.5            # 허블상수 [km/s/Mpc]
+Mpc_to_pc = 1e6      # 1 Mpc = 10^6 pc
+kpc_to_m = 3.086e19  # 1 kpc = 3.086e19 m
+
+def theoretical_curve(R_kpc):
+    """
+    이론적 회전속도 v(R) 계산
+    R_kpc : 반지름 [kpc]
+    """
+    R_m = R_kpc * kpc_to_m  # kpc → m
+
+    # 은하 중심부 밀도 가정 (균일 밀도)
+    rho0 = 1e-21  # [kg/m^3], 은하 중심부 근처의 대략적인 질량 밀도
+    
+    M = np.zeros_like(R_m)
+
+    # 5 kpc 까지는 M ∝ R^3, 이후 질량이 거의 일정하다고 가정
+    for i, R in enumerate(R_m):
+        if R < 5 * kpc_to_m:
+            M[i] = (4/3) * np.pi * R**3 * rho0
+        else:
+            M[i] = (4/3) * np.pi * (5 * kpc_to_m)**3 * rho0
+
+    # v = sqrt(G*M/R)
+    v_m_per_s = np.sqrt(G * M / R_m)
+    v_km_per_s = v_m_per_s / 1000  # m/s → km/s
+
+    return v_km_per_s
+def radial_velocity(z):
+    return c * z  # km/s
+
+def distance_from_vr(vr):
+    r_Mpc = vr / H0          # 허블 법칙: v = H*r
+    r_pc = r_Mpc * Mpc_to_pc # Mpc → pc
+    return r_pc
+
+def tangential_velocity(mu, r_pc):
+    return 4.74 * mu * r_pc  # km/s
+
+def observed_velocity(vr, vt):
+    return np.sqrt(vr**2 + vt**2)
+# ----- 실제 관측 데이터 -----
+# 반지름 (kpc), 적색편이 z, 고유운동 mu ("/yr)
+R_kpc_obs = np.array([1, 2, 4, 6, 8, 10, 12, 15])  # 예시 반지름
+z_obs      = np.array([0.0004, 0.0008, 0.0015, 0.0020, 0.0023, 0.0025, 0.0026, 0.0027])
+mu_obs     = np.array([0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0006, 0.0005, 0.0004])
+vr_obs = radial_velocity(z_obs)
+r_pc_obs = distance_from_vr(vr_obs)
+vt_obs = tangential_velocity(mu_obs, r_pc_obs)
+v_obs = observed_velocity(vr_obs, vt_obs)
+# 반지름 범위 (이론용)
+R_kpc_theory = np.linspace(0.1, 20, 200)
+v_theory = theoretical_curve(R_kpc_theory)
+
+plt.figure(figsize=(8,6))
+plt.plot(R_kpc_theory, v_theory, 'r--', label='Theoretical (No Dark Matter)')
+plt.scatter(R_kpc_obs, v_obs, color='b', label='Observed (21cm data)')
+plt.xlabel('Radius (kpc)')
+plt.ylabel('Velocity (km/s)')
+plt.title('Galaxy Rotation Curve: Theory vs Observation')
+plt.legend()
+plt.grid(True)
+plt.show()
